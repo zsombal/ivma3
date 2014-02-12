@@ -1,6 +1,12 @@
 IVMA3 - In Vitro Motility Assay Automated Analysis
 
-Described in:
+To download all the files for the software at once, use the “Download ZIP” function for this Git repository. Unzip the files, no special installation beyond MatLab is required.
+
+The software has been running happily on MatLab 2012 and later versions. The Image Processing toolbox is required for general operation. The Statistics Toolbox is required for using the automated quality control mechanism (“trace dropping”).
+
+The method is introduced and evaluated in the following publication:
 Hilbert, Lennart; Bates, Genevieve; Roman, Horia N; Blumenthal, Jenna L; Zitouni, Nedjma B; Sobieszek, Apolinary; Mackey, Michael C; Lauzon, Anne-Marie
 Molecular Mechanical Differences between Isoforms of Contractile Actin in the Presence of Isoforms of Smooth Muscle Tropomyosin.
 PLoS Comput. Biol. 9, e1003273 (2013).
+
+The software has been developed in Anne-Marie Lauzon’s research group, which are part of the Meakins-Christie Laboratories at McGill University.
