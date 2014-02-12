@@ -121,6 +121,9 @@ end
 
 parfor vv = 1:videos_in_batch
     
+    this_target_folder = videos{vv,2}; % outside of try statement, because
+    % it causes an error message when left inside the loop.
+
     try
         %Encloses the following operations to catch errors instead of
         %interrupting the processing of the whole batch
@@ -223,11 +226,10 @@ parfor vv = 1:videos_in_batch
             error_log{vv} = sprintf('Error accessing video file:\n%s',videos{vv,1});
             do_analysis = false;
         end
-        
+                
         if do_analysis
             
             %% Creation of target directory to save to
-            this_target_folder = videos{vv,2};
             [~,~,~] = mkdir(this_target_folder);
             
             
