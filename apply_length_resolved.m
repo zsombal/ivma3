@@ -5,13 +5,36 @@ function [ analysis_output,window_centers,window_counts,varargout ] = ...
     filament_function,window_function,varargin)
 %APPLY_LENGTH_RESOLVED Applies analysis function in length-resolved manner
 %
-%   Inputs
+%   This is a utility function to interact with result bundles. The
+%   filaments will first be analyzed individually, then they are binned
+%   into running filament length windows, and a summary statistic or result
+%   is calculated in each length window.
+%
+%   The general idea is:
+%
+%     (1) Specify the result bundle(s) that should be analyzed
+%     (2) Specify the function(s) that should be applied for the analysis
+%     of each individual filament
+%     (3) Specify the function(s) that will be applied to the results of
+%     the filaments contained within a given length window.
+%
+%   For several inputs and outputs, they can be passed in different
+%   formats. Also, some inputs and outputs are optional, meaning that they
+%   can be used or omitted dependent on what type of analysis is required.
+%
+%   INPUTS
 %
 %   input_bundle - bundle from which result sections are read, either
 %   passed as a string, or as a cell of strings
 %
 %   keywords - struct_array with fields and_keyword, with_keywords,
 %   not_keywords. If empty [], no keywords are applied
+%
+%   L_min - start point for box car run
+%   L_max - end point for box car run
+%   windows - number of box car windows
+%   window_width - width of box car window in fraction of the distance from
+%   L_min to L_max
 %
 %   complex_in - if true, complex results in length and velocity are
 %   considered, otherwise they are not considered
@@ -21,20 +44,81 @@ function [ analysis_output,window_centers,window_counts,varargout ] = ...
 %   anything other than true, i.e. unassigned, empty [], or false, the
 %   Tracedropper rejection is considered
 %
-%   L_min - start point for box car run
-%   L_max - end point for box car run
-%   windows - number of box car windows
-%   window_width - width of box car window in fraction of the distance from
-%   L_min to L_max
-%
 %   filament_function - function to get the necessary results from each
 %   filament
 %   window_function - function to be applied to all results inside each
 %   window
 %
-%   Outputs
+%   OPTIONAL INPUTS - if not used, either omit, or use an empty array [] as
+%   the argument. The optional arguments have to be added in the right
+%   order. So if the third optional argument should be passed, the first
+%   and second have to be passed as well. However, just assing the empty
+%   array [] in their place if they are not to be applied.
 %
-%   Confidence intervals only work for scalar result values
+%   verbose (first optional argument) - if the string 'verbose' is used as
+%   the first optional input argument, the function will output additional
+%   details on its progress. Otherwise minimal output will be generated.
+%
+%   selection_function (second optional argument) - function handle to a 
+%   function that is applied to an individual section of the result bundle.
+%   If the function returns true, the result section will be included in
+%   the analysis, otherwise it will be excluded.
+%
+%   nboot - number of bootstrap resamples. Only relevant if bootstrap
+%   sampling has been requested by using optional output arguments.
+%
+%   OUTPUTS
+%
+%   analysis_output - returns the length-resolved result from the window
+%   function. The format returned is a 1-by-M cell, where M is the number of
+%   level functions, with each element containing a 1-by-N cell, where N is
+%   the number of length windows.
+%
+%   window_centers - returns the centers of the filament length windows,
+%   the format returned is a 1-by-N array, where N is the number of length
+%   windows.
+%
+%   window_coutns - returns the number of filaments contained within each
+%   length window.
+%
+%   OPTIONAL OUTPUTS - if not used, either omit, or use tilde ~ as
+%   the output. The optional outputs have to be added in the right
+%   order. So if the third optional output should be assigned, the first
+%   and second have to be passed as well. However, just assign tilde ~
+%   in their place if they are not to be assigned.
+%
+%   confidence_intervals - returns the confidence intervals of the
+%   statistic, the confidence intervals are determined from bootstrap
+%   statistics, executed with nboot bootstrap samples (500 default value
+%   for nboot, if not chosen via optional input argument). The confidence
+%   intervals are returned in a cell array of dimension 1-by-M (where M is
+%   the number of window level analysis functions). Each cell element
+%   contains a 2-by-N numeric array, where the first dimension refers to
+%   the upper and lower confidence interval, and the second dimension
+%   refers to the actin length window.
+%
+%   bootstrap_results - returns the bootstrap results that were used in the
+%   determination of the confidence intervals. The bootstrap samples
+%   are returned in a cell array of dimension 1-by-M (where M is
+%   the number of window level analysis functions). Each cell element
+%   contains an nbbot-by-N numeric array, where the first dimension refers to
+%   the individual bootstrap samples, and the second dimension
+%   refers to the actin length window. For one index in the first
+%   dimension, first bootstrapping is applied, and then the running window
+%   procedure is applied. In this way, for the same value for the first
+%   dimension index, all values for the length windows stem from the same
+%   re-sample.
+%
+%   Confidence intervals only work where the window level analysis
+%   functions return scalar values.
+
+
+cell(1,number_of_win_functions);
+       for ff = 1:number_of_win_functions
+           starting_ind = 1 + (ff-1).*windows;
+           varargout{1}{ff} = ...
+               boot_ci(:,starting_ind:starting_ind+windows-1)
+
 
 
 %% Check if verbose progress report is required
@@ -56,9 +140,18 @@ else
 end
 
 
+
 %% Parameters
 
-nboot = 500; % Bootstrap samples
+if nargin > 12 && ~isempty(varargin{3}) ...
+        && isnumeric(varargin{3})
+    % Set the number of bootstrap samples according to function argument
+    nboot = round(varargin{3});
+else
+    nboot = 500; % Default number of bootstrap samples
+end
+
+
 
 %% Preliminaries
 
