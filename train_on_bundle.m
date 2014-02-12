@@ -1,5 +1,20 @@
+% This code is used to create a training experience file for the automated
+% trace dropper system. All parameters for the training have to be
+% specified here, they cannot be changed anymore after the training is
+% completed.
+%
+% The only parameter that is still free is the threshold for
+% classifying a filament motion trace as rejected, which is between 0 and
+% 1. This estimation can be done from the output plots that are presented
+% after the training with this file (train_on_bundle.m) has completed.
+%
+% For background on the classification system, see Hilbert et al., PLoS
+% Computation Biology, 2013.
+
 % Algorithm parameters
-false_pos_cost = 15; false_neg_cost = 1; % Costs of misclassification
+
+false_pos_cost = 15; % Relative cost of classifying a false positive
+false_neg_cost = 1; % Relative cost of classifying a false negative
 ntrees = 150; % Number of decision trees in bag
 
 % Open the bundles used for training and testing of the data classification
