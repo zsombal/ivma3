@@ -482,11 +482,11 @@ fprintf('\n --- Inclusion otpions --- \n')
 if handles.complex_len_in && handles.complex_vel_in
     fprintf('Complex lengths and velocities included.\n')
 elseif handles.complex_len_in
-    fprintf('Complex lengths included.\n')
+    fprintf('Complex lengths included, complex velocities excluded.\n')
 elseif handles.complex_vel_in
-    fprintf('Complex velocities included.\n')
+    fprintf('Complex velocities included, complex lengths excluded.\n')
 else
-    fprintf('Complex lengths and velocities not included.\n')
+    fprintf('Complex lengths and velocities excluded.\n')
 end
 
 if handles.non_dropped
