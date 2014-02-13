@@ -4,6 +4,9 @@ To download all the files for the software at once, use the “Download ZIP” f
 
 The software has been running happily on MatLab 2012 and later versions. The Image Processing toolbox is required for general operation. The Statistics Toolbox is required for using the automated quality control mechanism (“trace dropping”).
 
+To get started using this software, there is a Wiki for this repository. The Wiki can be accessed at the internet address github.com/lhilbert/ivma3
+Look for the link/button that says “Wiki”. You will find links to instructions and tutorials.
+
 The method is introduced and evaluated in the following publication:
 Hilbert, Lennart; Bates, Genevieve; Roman, Horia N; Blumenthal, Jenna L; Zitouni, Nedjma B; Sobieszek, Apolinary; Mackey, Michael C; Lauzon, Anne-Marie
 Molecular Mechanical Differences between Isoforms of Contractile Actin in the Presence of Isoforms of Smooth Muscle Tropomyosin.
