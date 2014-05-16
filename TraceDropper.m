@@ -22,7 +22,7 @@ function varargout = TraceDropper(varargin)
 
 % Edit the above text to modify the response to help TraceDropper
 
-% Last Modified by GUIDE v2.5 16-Dec-2011 12:26:00
+% Last Modified by GUIDE v2.5 16-May-2014 16:07:36
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -86,6 +86,9 @@ set(handles.keyboard_commands_text,'String', ...
     'Shift - keep and show\n', ...
     'Space - keep and hide\n', ...
     'Control - drop and show\n']))
+
+% Instantiate cell array to keep track of trace choices - for UNDO function
+handles.undo_cell = {};
 
 % Update handles structure
 guidata(hObject, handles);
@@ -221,6 +224,7 @@ function drop_all_button_Callback(hObject, eventdata, handles)
 
 handles.keep_vector(:) = 0;
 handles = update_plots(hObject,handles);
+handles.undo_cell = {};
 
 guidata(hObject,handles)
 
@@ -234,6 +238,7 @@ function keep_all_button_Callback(hObject, eventdata, handles)
 
 handles.keep_vector(:) = 1;
 handles = update_plots(hObject,handles);
+handles.undo_cell = {};
 
 guidata(hObject,handles)
 
@@ -247,6 +252,7 @@ function show_all_button_Callback(hObject, eventdata, handles)
 
 handles.show_vector(:) = 1;
 handles = update_plots(hObject,handles);
+handles.undo_cell = {};
 
 guidata(hObject,handles)
 
@@ -360,7 +366,15 @@ handles.write_plain_text = get(handles.write_text_checkbox,'Value');
 guidata(hObject,handles)
 
 
+% --- Executes on button press in pushbutton7.
+function pushbutton7_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton7 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 
+handles = undo_last(hObject,handles);
+
+guidata(hObject,handles)
 
 
 % --- Can be called from other functions
@@ -473,6 +487,10 @@ else
     handles.trace_in_view = 1;
     
     handles = update_plots(hObject,handles);
+    
+    % Clear the UNDO history vector
+    handles.undo_cell = {};
+    
 end
 
 guidata(hObject,handles)
@@ -679,6 +697,11 @@ function handles = put_this_trace(hObject,handles,put_where)
 % for traces that are kept in the result data set for further analysis)
 % accordingly
 
+last_state = [handles.trace_in_view, ...
+    handles.keep_vector(handles.trace_in_view), ...
+    handles.show_vector(handles.trace_in_view)];
+
+handles.undo_cell = [handles.undo_cell,last_state];
 
 if strcmp(put_where,'drophide')
     % Drop the current trace from results and remove from displays
@@ -727,6 +750,41 @@ handles = update_plots(hObject,handles);
 guidata(hObject,handles)
 
 
+% ---- Can be called by callback functions
+function handles = undo_last(hObject,handles)
+% handles    empty - handles not created until after all CreateFcns called
+% put_where put_where - string that determines into which class the
+%           current trace should be put
+%
+% This function restores the last saved values in the undo cell
+
+% Retrieve and remove last action
+
+last_action = false;
+
+if numel(handles.undo_cell)>0
+        
+    last_action = handles.undo_cell{end};
+    
+    % Remove last action from undo cell
+    if numel(handles.undo_cell)==1
+        handles.undo_cell = {};
+    elseif numel(handles.undo_cell)>1
+        handles.undo_cell = handles.undo_cell(1:end-1);
+    end
+end
+
+% Restore filament to before last action
+
+if last_action
+   
+    handles.keep_vector(last_action(1)) = last_action(2);
+    handles.show_vector(last_action(1)) = last_action(3);
+    handles.trace_in_view = last_action(1);
+    
+end
+
+handles = update_plots(hObject,handles);
 
 
 % ---- Can be called from other functions
@@ -823,3 +881,5 @@ if handles.write_plain_text
     end
     
 end
+
+
