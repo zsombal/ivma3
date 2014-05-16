@@ -193,6 +193,10 @@ if nn>0
             L_max-L_min V_max-V_min],...
             'FaceColor','none','EdgeColor',[0.4 0.4 0.4])
         plot(lengths,velocities,'k+')
+        if V_thresh > 0
+            plot([L_min,L_max],[V_thresh,V_thresh],'k--')
+        end
+        hold off
         
         % Plot the frame to frame velocity histogram
         subplot(2,1,2)
@@ -200,6 +204,14 @@ if nn>0
         hist(f2f_velocities,25)
         xlabel('V_{f2f}[\mum/s]')
         ylabel('Count')
+        
+        if V_thresh > 0
+            hold on
+            currentLim = get(gca,'YLim');
+            plot([V_thresh,V_thresh],[0,currentLim(2).*10.0],'k--')
+            set(gca,'YLim',currentLim)
+            hold off
+        end
         
     end
 else
@@ -478,7 +490,7 @@ fprintf('Velocity limits: (%f,%f) [microns/sec]\n',...
 fprintf('Motile/non-motile threshold velocity: %f [microns/sec]\n',...
     handles.V_thr)
 
-fprintf('\n --- Inclusion otpions --- \n')
+fprintf('\n --- Inclusion options --- \n')
 if handles.complex_len_in && handles.complex_vel_in
     fprintf('Complex lengths and velocities included.\n')
 elseif handles.complex_len_in
