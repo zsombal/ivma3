@@ -181,7 +181,7 @@ for kk = 1:number_of_files
     fprintf('Extracting trace features for file %d of %d.\n',...
         kk,number_of_files)
     
-    if ~tracedrop_masks(kk) || strcmp(overwrite,'Yes')
+    if ~with_tracedrop_mask(kk) || strcmp(overwrite,'Yes')
         
         % If (1) no tracedrop mask exists OR (2) tracedrop mask should be
         % overwritten, go ahead and determine the tracedrop mask from the
@@ -265,15 +265,6 @@ for kk = 1:number_of_files
             this_trace_features(2.*maximal_corners+6) = properties.Perimeter;
 
             feature_container(tt,:) = this_trace_features;
-
-            % Plot the image of this trace with detected corners
-            %     imagesc(this_image)
-            %     hold on
-            %     plot(corner_positions(:,1),corner_positions(:,2),'ro')
-            %     hold off
-            %     pause(1)
-
-
 
             fprintf('%d of %d traces done, file %d of %d.\n',...
             tt,number_of_traces,kk,number_of_files)
