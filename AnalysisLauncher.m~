@@ -241,29 +241,25 @@ function parallel_check_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of parallel_check
 
-if handles.parallelFlag
-    
-    handles.parallel_CPUs = matlabpool('size');
-    
-    if handles.parallel_CPUs > 0
-        matlabpool close
+handles.parallel_CPUs = matlabpool('size');
+
+if handles.parallel_CPUs > 0
+    matlabpool close
+else
+    if str2double(get(handles.CPU_edit,'String')) > 0
+        matlabpool(str2double(get(handles.CPU_edit,'String')))
     else
-        if str2double(get(handles.CPU_edit,'String')) > 0
-            matlabpool(str2double(get(handles.CPU_edit,'String')))
-        else
-            matlabpool
-        end
+        matlabpool
     end
-    
-    handles.parallel_CPUs = matlabpool('size');
-    if handles.parallel_CPUs > 0
-        set(handles.parallel_check,'Value',1)
-    else
-        set(handles.parallel_check,'Value',0)
-    end
-    set(handles.CPU_edit,'String',num2str(handles.parallel_CPUs))
-    
 end
+    
+handles.parallel_CPUs = matlabpool('size');
+if handles.parallel_CPUs > 0
+    set(handles.parallel_check,'Value',1)
+else
+    set(handles.parallel_check,'Value',0)
+end
+set(handles.CPU_edit,'String',num2str(handles.parallel_CPUs))
 
 
 function CPU_edit_Callback(hObject, eventdata, handles)
