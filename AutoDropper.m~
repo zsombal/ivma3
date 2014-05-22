@@ -326,7 +326,7 @@ feature_container = zeros(number_of_traces,number_of_features);
 % Create trace images that are centered and have same 
 centered_images = false(number_of_traces,height.*width);
 
-fprintf('%d tracs to analyze in total. Starting...\n',number_of_traces);
+fprintf('%d traces to analyze in total. Starting...\n',number_of_traces);
 
 parfor_progress(number_of_traces);
 
@@ -447,6 +447,13 @@ handles.maximal_corners = maximal_corners;
 handles.number_of_features = number_of_features;
 handles.relevant_pixels = relevant_pixels;
 handles.decision_tree_model = decision_tree_model;
+
+handles.training_expertise = struct();
+handles.training_expertise.decision_tree_model = handles.decision_tree_model;
+handles.training_expertise.relevant_pixels = handles.relevant_pixels;
+handles.training_expertise.opt_thresh = 0.8;
+handles.training_expertise.height = handles.height;
+handles.training_expertise.width = handles.width;
 
 set(handles.TrainingLoadButton,'Enable','on');
 set(handles.TrainingCreateButton,'Enable','on');
@@ -870,35 +877,34 @@ function TraceSlider_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
-slider_val = get(hObject,')
 
+slider_val = get(hObject,'Value');
+slider_val = round(slider_val);
+set(hObject,'Value',slider_val);
 
+% Initialize all 0 image
+this_image = false(handles.height,handles.width);
 
+kk = slider_val;
 
+% horizontal positioning
+xx_center = floor(handles.trace_bounding_boxes{kk}(1) + ...
+    handles.trace_bounding_boxes{kk}(3)./2);
+xx_min = ceil(handles.trace_bounding_boxes{kk}(1))-xx_center+round(handles.width./2);
+xx_max = xx_min + handles.trace_bounding_boxes{kk}(3)-1;
+% vertical positioning
+yy_center = floor(handles.trace_bounding_boxes{kk}(2) + ...
+    handles.trace_bounding_boxes{kk}(4)./2);
+yy_min = ceil(handles.trace_bounding_boxes{kk}(2))-yy_center+round(handles.height./2);
+yy_max = yy_min + handles.trace_bounding_boxes{kk}(4)-1;
+this_image(yy_min:yy_max,xx_min:xx_max) = ...
+    handles.trace_images{kk};
 
-
-%     for kk = false_positive_indices.';
-%         % Initialize all 0 image
-%         this_image = false(height,width);
-%         
-%         % horizontal positioning
-%         xx_center = floor(trace_bounding_boxes{kk}(1) + ...
-%             trace_bounding_boxes{kk}(3)./2);
-%         xx_min = ceil(trace_bounding_boxes{kk}(1))-xx_center+round(width./2);
-%         xx_max = xx_min + trace_bounding_boxes{kk}(3)-1;
-%         % vertical positioning
-%         yy_center = floor(trace_bounding_boxes{kk}(2) + ...
-%             trace_bounding_boxes{kk}(4)./2);
-%         yy_min = ceil(trace_bounding_boxes{kk}(2))-yy_center+round(height./2);
-%         yy_max = yy_min + trace_bounding_boxes{kk}(4)-1;
-%         this_image(yy_min:yy_max,xx_min:xx_max) = ...
-%             trace_images{kk};
-%         colormap(gray)
-%         imagesc(this_image)
-%         pause(1)
-%     end
-% end
-
+colormap(gray)
+axes(handles.TraceAxes)
+imagesc(this_image)
+    
+guidata(hOBject,handles);
 
 
 % --- Executes during object creation, after setting all properties.

@@ -326,7 +326,7 @@ feature_container = zeros(number_of_traces,number_of_features);
 % Create trace images that are centered and have same 
 centered_images = false(number_of_traces,height.*width);
 
-fprintf('%d tracs to analyze in total. Starting...\n',number_of_traces);
+fprintf('%d traces to analyze in total. Starting...\n',number_of_traces);
 
 parfor_progress(number_of_traces);
 
@@ -447,6 +447,13 @@ handles.maximal_corners = maximal_corners;
 handles.number_of_features = number_of_features;
 handles.relevant_pixels = relevant_pixels;
 handles.decision_tree_model = decision_tree_model;
+
+handles.training_expertise = struct();
+handles.training_expertise.decision_tree_model = handles.decision_tree_model;
+handles.training_expertise.relevant_pixels = handles.relevant_pixels;
+handles.training_expertise.opt_thresh = 0.8;
+handles.training_expertise.height = handles.height;
+handles.training_expertise.width = handles.width;
 
 set(handles.TrainingLoadButton,'Enable','on');
 set(handles.TrainingCreateButton,'Enable','on');
