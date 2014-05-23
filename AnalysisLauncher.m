@@ -417,13 +417,13 @@ end
 options = struct;
 %Put out preprocessing control video
 options.preprocessing_control_video = ...
-    boolean(get(handles.preprocessing_check,'Value'));
+    logical(get(handles.preprocessing_check,'Value'));
 %Put out filament tracking control video
 options.tracking_control_video = ...
-    boolean(get(handles.tracking_check,'Value'));
+    logical(get(handles.tracking_check,'Value'));
 %Write breakage and trace results to plain text files
 options.write_plain_text = ...
-    boolean(get(handles.plain_text_check,'Value'));
+    logical(get(handles.plain_text_check,'Value'));
 
 % -------------------
 %Call to analysis function
@@ -870,7 +870,7 @@ parameters.min_trace_length = ...
 
 %Removal of immotile frames ON (true) or OFF (false)
 parameters.immotile_frame_removal = ...
-    boolean(get(handles.immotile_check,'Value'));
+    logical(get(handles.immotile_check,'Value'));
 
 [save_file,save_path] = uiputfile(pwd,'Save parameters in which file?');
 save([save_path filesep save_file],'parameters')
