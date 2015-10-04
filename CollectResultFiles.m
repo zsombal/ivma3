@@ -22,7 +22,7 @@ function varargout = CollectResultFiles(varargin)
 
 % Edit the above text to modify the response to help CollectResultFiles
 
-% Last Modified by GUIDE v2.5 31-Jul-2012 16:03:50
+% Last Modified by GUIDE v2.5 07-Aug-2014 12:38:16
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -74,8 +74,9 @@ varargout{1} = handles.output;
 
 
 function [v_mean,v_STD,L_mean,L_STD,f_mot,nn] = ...
-    get_motility_quantifiers(L_min,L_max,V_min,V_max,V_thresh,...
-    result_paths,complex_len_in,complex_vel_in,non_dropped,do_plots)
+    get_motility_quantifiers(L_min,L_max,V_min,V_max,V_thresh,V_removal,...
+    result_paths,complex_len_in,complex_vel_in,non_dropped,do_plots, ...
+    V_high,num_bins)
 
 number_of_results = numel(result_paths);
 
@@ -137,7 +138,8 @@ end
 if do_plots
     figure
     subplot(2,1,1)
-    plot(real(lengths),real(velocities),'ko')
+    plot(real(lengths),real(velocities),'ko', ...
+        'MarkerEdgeColor',[0.7,0.7,0.7])
     max_length = max(real(lengths));max_velocity = max(real(velocities));
     hold on
 end
@@ -159,22 +161,45 @@ else
         & real(velocities)>=V_min & real(velocities)<=V_max;
 end
 
+in_inds = find(in_inds);
+nn = numel(in_inds);
+
+if nn>0
+    
+    nonmotile_correction = ones(1,nn);
+    
+    for kk = 1:nn
+        nonmotile_correction(kk) = numel(f2f_velocities{in_inds(kk)}) ...
+            ./sum(f2f_velocities{in_inds(kk)}>=V_removal);
+    end
+    
+    in_inds = in_inds(isfinite(nonmotile_correction));
+    nonmotile_correction = ...
+        nonmotile_correction(isfinite(nonmotile_correction));
+    
+end
+
 % Pool the basic properties together for mean and standard deviation
 % calculation
 lengths = lengths(in_inds);
 velocities = velocities(in_inds);
 % number of filaments
-nn = numel(lengths);
+nn = numel(in_inds);
 
 if nn>0
     % If at least one filament is left over to calculate results for
-    
+
+        
+    f2f_velocities = [f2f_velocities{in_inds}];
+
     % Trace velocity quantifiers
-    v_mean = mean(real(velocities)); v_STD = std(real(velocities));
-    L_mean = mean(real(lengths)); L_STD = std(real(lengths));
+    v_mean = mean(nonmotile_correction.*real(velocities));
+    v_STD = std(nonmotile_correction.*real(velocities));
+    L_mean = mean(real(lengths));
+    L_STD = std(real(lengths));
     
     % Motile fraction
-    f2f_velocities = [f2f_velocities{in_inds}];
+    f2f_velocities = f2f_velocities(f2f_velocities>=V_removal);
     f_mot = sum(f2f_velocities>=V_thresh)./numel(f2f_velocities);
     
     if do_plots
@@ -192,7 +217,7 @@ if nn>0
         rectangle('Position',[L_min V_min ...
             L_max-L_min V_max-V_min],...
             'FaceColor','none','EdgeColor',[0.4 0.4 0.4])
-        plot(lengths,velocities,'k+')
+        plot(lengths,nonmotile_correction.*real(velocities),'k+')
         if V_thresh > 0
             plot([L_min,L_max],[V_thresh,V_thresh],'k--')
         end
@@ -201,9 +226,19 @@ if nn>0
         % Plot the frame to frame velocity histogram
         subplot(2,1,2)
         
-        hist(f2f_velocities,25)
+        if (isfinite(V_high) && isfinite(num_bins))
+            binEdgeVec = linspace(0,V_high,num_bins);
+            counts = histc(f2f_velocities,binEdgeVec);
+        else
+            binEdgeVec = linspace(0,max(f2f_velocities),25);
+            counts = ...
+                histc(f2f_velocities,binEdgeVec);
+        end
+        binCenterVec = (binEdgeVec(1:end-1)+binEdgeVec(2:end))./2.0;
+        bar(binCenterVec,counts(1:end-1));
         xlabel('V_{f2f}[\mum/s]')
         ylabel('Count')
+        
         
         if V_thresh > 0
             hold on
@@ -476,11 +511,28 @@ handles.L_max = str2double(get(handles.Lmax_edit,'String'));
 
 handles.V_thr = str2double(get(handles.Vthresh_edit,'String'));
 
+if boolean(get(handles.nonmotile_removal_checkbox,'Value'));
+    handles.V_removal = ...
+        str2double(get(handles.nonmotile_threshold_edit,'String'));
+else
+    handles.V_removal = 0;
+end
+
+
+if boolean(get(handles.hist_settings_checkbox,'Value'));
+    V_high = str2double(get(handles.Vhigh_edit,'String'));
+    num_bins = str2double(get(handles.hist_bin_edit,'String'));
+else
+    V_high = NaN;
+    num_bins = NaN;
+end
+
 [v_mean,v_STD,L_mean,L_STD,f_mot,nn] = ...
     get_motility_quantifiers(...
-    handles.L_min,handles.L_max,handles.V_min,handles.V_max,handles.V_thr,...
+    handles.L_min,handles.L_max,...
+    handles.V_min,handles.V_max,handles.V_thr,handles.V_removal,...
     handles.result_paths,handles.complex_len_in,handles.complex_vel_in,...
-    handles.non_dropped,handles.do_plots);
+    handles.non_dropped,handles.do_plots,V_high,num_bins);
 
 fprintf('\n\n --- Limits and thresholds --- \n')
 fprintf('Length limits: (%f,%f) [microns]\n',...
@@ -610,3 +662,112 @@ function complex_vel_checkbox_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of complex_vel_checkbox
+
+
+% --- Executes on button press in hist_settings_checkbox.
+function hist_settings_checkbox_Callback(hObject, eventdata, handles)
+% hObject    handle to hist_settings_checkbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of hist_settings_checkbox
+
+if boolean(get(hObject,'Value'))
+    set(handles.hist_bin_text,'enable','on');
+    set(handles.hist_bin_edit,'enable','on');
+    set(handles.Vhigh_text,'enable','on');
+    set(handles.Vhigh_edit,'enable','on');
+else
+    set(handles.hist_bin_text,'enable','off');
+    set(handles.hist_bin_edit,'enable','off');
+    set(handles.Vhigh_text,'enable','off');
+    set(handles.Vhigh_edit,'enable','off');
+end
+
+guidata(hObject,handles)
+
+% --- Executes on button press in nonmotile_removal_checkbox.
+function nonmotile_removal_checkbox_Callback(hObject, eventdata, handles)
+% hObject    handle to nonmotile_removal_checkbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of nonmotile_removal_checkbox
+
+if boolean(get(hObject,'Value'))
+    set(handles.nonmotile_threshold_text,'enable','on');
+    set(handles.nonmotile_threshold_edit,'enable','on');
+else
+    set(handles.nonmotile_threshold_text,'enable','off');
+    set(handles.nonmotile_threshold_edit,'enable','off');    
+end
+
+guidata(hObject,handles)
+
+
+function nonmotile_threshold_edit_Callback(hObject, eventdata, handles)
+% hObject    handle to nonmotile_threshold_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of nonmotile_threshold_edit as text
+%        str2double(get(hObject,'String')) returns contents of nonmotile_threshold_edit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function nonmotile_threshold_edit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to nonmotile_threshold_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function hist_bin_edit_Callback(hObject, eventdata, handles)
+% hObject    handle to hist_bin_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of hist_bin_edit as text
+%        str2double(get(hObject,'String')) returns contents of hist_bin_edit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function hist_bin_edit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to hist_bin_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function Vhigh_edit_Callback(hObject, eventdata, handles)
+% hObject    handle to Vhigh_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of Vhigh_edit as text
+%        str2double(get(hObject,'String')) returns contents of Vhigh_edit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function Vhigh_edit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to Vhigh_edit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

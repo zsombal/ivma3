@@ -22,7 +22,7 @@ function varargout = ResultBundleManager(varargin)
 
 % Edit the above text to modify the response to help ResultBundleManager
 
-% Last Modified by GUIDE v2.5 24-Jan-2012 15:34:17
+% Last Modified by GUIDE v2.5 13-May-2015 20:39:43
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
