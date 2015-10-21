@@ -22,7 +22,7 @@ function varargout = AnalysisLauncher(varargin)
 
 % Edit the above text to modify the response to help AnalysisLauncher
 
-% Last Modified by GUIDE v2.5 03-Apr-2012 16:00:28
+% Last Modified by GUIDE v2.5 04-Oct-2015 19:41:22
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -57,8 +57,9 @@ handles.output = hObject;
 
 % Set avi-file radiobutton off and root folder radiobutton on
 set(handles.file_radio,'Value',0)
-set(handles.batch_radio,'Value',1)
-handles.input_type = 'batch';
+set(handles.avi_batch_radio,'Value',1)
+handles.input_type = 'avi_batch';
+set(handles.stk_batch_radio,'Value',0)
 
 % Determine the size of the MatLab parallel processing pool
 
@@ -118,9 +119,13 @@ function pick_source_button_Callback(hObject, eventdata, handles)
 
 %Request folder in case of batch analysis, request file in case of file
 %analysis
-if strcmp(handles.input_type,'batch')
+if strcmp(handles.input_type,'avi_batch')
     handles.source_path = uigetdir(handles.source_path, ...
-        'Pick source root folder');
+        'Pick .avi source root folder');
+    set(handles.source_edit,'String',handles.source_path);
+elseif strcmp(handles.input_type,'stk_batch')
+    handles.source_path = uigetdir(handles.source_path, ...
+        'Pick .stk source root folder');
     set(handles.source_edit,'String',handles.source_path);
 elseif strcmp(handles.input_type,'file')
     [file,handles.source_path] = uigetfile([handles.source_path filesep '*.avi'], ...
@@ -211,26 +216,48 @@ function file_radio_Callback(hObject, eventdata, handles)
 
 % Set avi-file radiobutton off and root folder radiobutton on
 set(handles.file_radio,'Value',1)
-set(handles.batch_radio,'Value',0)
+set(handles.avi_batch_radio,'Value',0)
+set(handles.stk_batch_radio,'Value',0)
 handles.input_type = 'file';
 
 guidata(hObject,handles)
 
 
-% --- Executes on button press in batch_radio.
-function batch_radio_Callback(hObject, eventdata, handles)
-% hObject    handle to batch_radio (see GCBO)
+% --- Executes on button press in avi_batch_radio.
+function avi_batch_radio_Callback(hObject, eventdata, handles)
+% hObject    handle to avi_batch_radio (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of batch_radio
+% Hint: get(hObject,'Value') returns toggle state of avi_batch_radio
 
 % Set avi-file radiobutton off and root folder radiobutton on
 set(handles.file_radio,'Value',0)
-set(handles.batch_radio,'Value',1)
-handles.input_type = 'batch';
+set(handles.avi_batch_radio,'Value',1)
+set(handles.stk_batch_radio,'Value',0)
+handles.input_type = 'avi_batch';
 
 guidata(hObject,handles)
+
+
+
+
+% --- Executes on button press in stk_batch_radio.
+function stk_batch_radio_Callback(hObject, eventdata, handles)
+% hObject    handle to stk_batch_radio (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of stk_batch_radio
+
+% Set avi-file radiobutton off and root folder radiobutton on
+set(handles.file_radio,'Value',0)
+set(handles.avi_batch_radio,'Value',0)
+set(handles.stk_batch_radio,'Value',1)
+handles.input_type = 'stk_batch';
+
+guidata(hObject,handles)
+
 
 
 % --- Executes on button press in parallel_check.
@@ -309,7 +336,11 @@ elseif ~target_exist_value
     return
 end
 
-if strcmp(handles.input_type,'batch') && source_exist_value == 2
+if strcmp(handles.input_type,'avi_batch') && source_exist_value == 2
+    msgbox('Choose a valid source folder, then press start again.', ...
+        'Source not a folder','error')
+    return
+elseif strcmp(handles.input_type,'stk_batch') && source_exist_value == 2
     msgbox('Choose a valid source folder, then press start again.', ...
         'Source not a folder','error')
     return
@@ -332,8 +363,8 @@ if strcmp(handles.input_type,'file')
     videos = {get(handles.source_edit,'String'); ...
         get(handles.target_edit,'String')}.';
     
-elseif strcmp(handles.input_type,'batch')
-    % -- In case video batch from a root folder was chosen --
+elseif strcmp(handles.input_type,'avi_batch')
+    % -- In case .avi batch from a root folder was chosen --
     
     % --
     % Create input batch that will be used in EvaluateVideo function call
@@ -341,12 +372,28 @@ elseif strcmp(handles.input_type,'batch')
     %Get the source and target root directory
     source_root_directory = ...
         get(handles.source_edit,'String');
-    %Call function that finds the paths to the 
-    [avi_file_paths,target_paths] = ...
+    %Call function that finds the paths to the videos
+    [video_file_paths,target_paths] = ...
         findvideos(source_root_directory,target_root_directory);
     
     % Batch to supply to EvaluateVideo.m function
-    videos = {avi_file_paths{:};target_paths{:}}.';
+    videos = {video_file_paths{:};target_paths{:}}.';
+
+elseif strcmp(handles.input_type,'stk_batch')
+    % -- In case .stk batch from a root folder was chosen --
+    
+    % --
+    % Create input batch that will be used in EvaluateVideo function call
+    
+    %Get the source and target root directory
+    source_root_directory = ...
+        get(handles.source_edit,'String');
+    %Call function that finds the paths to the videos
+    [video_file_paths,target_paths] = ...
+        findTIFFstacks(source_root_directory,target_root_directory);
+    
+    % Batch to supply to EvaluateVideo.m function
+    videos = {video_file_paths{:};target_paths{:}}.';
     
 end
 
@@ -354,6 +401,15 @@ end
 % ------------
 % Create structure containing the analysis parameters
 parameters = struct;
+
+%File type:
+if strcmp(handles.input_type,'file')
+    parameters.file_type = 'avi';
+elseif strcmp(handles.input_type,'avi_batch')
+    parameters.file_type = 'avi';
+elseif strcmp(handles.input_type,'stk_batch')
+    parameters.file_type = 'stk';
+end
 
 %Micrometers per pixel in the video
 parameters.scaling_factor = ...
@@ -1004,3 +1060,8 @@ function immo_threshold_vel_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+
+
+

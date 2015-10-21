@@ -153,7 +153,7 @@ parfor vv = 1:videos_in_batch
         else
             param_ind = 1;
         end
-        
+                
         %Micrometers per pixel in the video
         experimental_scaling_factor = ...
             parameters(param_ind).scaling_factor;
@@ -216,17 +216,56 @@ parfor vv = 1:videos_in_batch
         %Should the breakage and trace results be stored in a plain text file?
         write_plain_text = options(opt_ind).write_plain_text;
         
+        % ----- Video loading begins
         
-        %% Opening of video file as VideoReader object
+        % --- Opening of video file as VideoReader object
+        
+        stk_flag = false;
+        if strcmp(parameters(param_ind).file_type,'stk')
+            % -- If file is a TIFF stack
+            stk_flag = true;
+        end
         
         do_analysis = true;
-        try %Try if video can be read
-            current_video = VideoReader(videos{vv,1});
-        catch ME %otherwise store error message and prevsnt further analysis
-            error_log{vv} = sprintf('Error accessing video file:\n%s',videos{vv,1});
-            do_analysis = false;
-        end
+        if stk_flag
+%             try %Try if video can be read
+                [StackIntensityValues,TIFF_Info,MetaInfo] = ...
+                    StackRead(videos{vv,1});
+                StackIntensityValues = ...
+                    cellfun(@(elmt)single(elmt),StackIntensityValues,...
+                    'UniformOutput',false);
                 
+                % MetaInfo.CreationTime: cell with times when image was created, in
+                % milliseconds
+                
+                % --- start calculate average deltat
+                
+                % Check if there is a change of date during the time vector
+                timeVector = MetaInfo.CreationTime;
+                timeVector = (timeVector-timeVector(1))/1000; %(now in units of seconds)
+                
+                %check wether imaging was done during change of date
+                inds = timeVector<0;
+                timeVector(inds) = timeVector(inds) + 24.*60.*60;
+                
+                % Take average delta t between consecutive frames
+                deltat = mean(diff(timeVector));
+                
+                % --- end calculate average deltat
+                
+%             catch ME %otherwise store error message and prevsnt further analysis
+%                 error_log{vv} = sprintf('Error accessing video file:\n%s',videos{vv,1});
+%                 do_analysis = false;
+%             end
+        else
+            try %Try if video can be read
+                current_video = VideoReader(videos{vv,1});
+            catch ME %otherwise store error message and prevsnt further analysis
+                error_log{vv} = sprintf('Error accessing video file:\n%s',videos{vv,1});
+                do_analysis = false;
+            end
+        end
+        
         if do_analysis
             
             %% Creation of target directory to save to
@@ -245,18 +284,26 @@ parfor vv = 1:videos_in_batch
             end
             fclose(fid);
             
-            
-            %% Acquisition of frames from VideoReader object
+            % --- Acquisition of frames from VideoReader object
             
             % --------------
             % Video specs
             %Get the number of frames, frame rate, and total elapsed time
-            number_of_frames = current_video.NumberOfFrames;
-            frame_rate = current_video.FrameRate;
-            duration = current_video.Duration;
-            %Video size
-            [width,height] = deal(current_video.Width,...
-                current_video.Height);
+            if stk_flag
+                number_of_frames = numel(StackIntensityValues);
+                frame_rate = 1./deltat;
+                duration = (number_of_frames-1).*deltat;
+                %Video size
+                height = size(StackIntensityValues{1},1);
+                width = size(StackIntensityValues{2},1);
+            else
+                number_of_frames = current_video.NumberOfFrames;
+                frame_rate = current_video.FrameRate;
+                duration = current_video.Duration;
+                %Video size
+                [width,height] = deal(current_video.Width,...
+                    current_video.Height);
+            end
             
             
             %% Frame merging, brightness balancing, rescaling
@@ -283,32 +330,50 @@ parfor vv = 1:videos_in_batch
             %Merge frames and get brightness medians
             for mm = 1:number_of_merged_frames
                 
-                % -------------
-                % Read video frames into matrix
-                % Matrix containing all frame data for frames merged into this
-                % merged frame, dimensions are:
-                % image-height,image-width,RGB-channel,frame
-                % Take mean of the three color channels to get gray scale frame
-                % data, also scale from [0,255] to [0,1] range
-                current_gray_frames = ...
-                    mean( ...
-                    read(current_video, ...
-                    [(mm.*frames_to_merge),((mm+1).*frames_to_merge-1)]),3)./255
+                if stk_flag
                 
-                %Take the mean brightness of the frames to be merged and assign
-                %it to the merged frame
-                merged_frames(:,:,mm) = ...
-                    mean(squeeze(current_gray_frames(:,:,1,:)),3);
+                    %Sum up frames to be merged
+                    offset = (mm-1).*frames_to_merge;
+                    for nn = 1:frames_to_merge
+                        merged_frames(:,:,mm) = ...
+                            merged_frames(:,:,mm) ...
+                            + StackIntensityValues{offset+nn};
+                    end
+                    % Divide by the number of merged frames
+                    merged_frames(:,:,mm) = ...
+                        merged_frames(:,:,mm)./frames_to_merge;
+                    
+                else
+                    
+                    % -------------
+                    % Read video frames into matrix
+                    % Matrix containing all frame data for frames merged into this
+                    % merged frame, dimensions are:
+                    % image-height,image-width,RGB-channel,frame
+                    % Take mean of the three color channels to get gray scale frame
+                    % data, also scale from [0,255] to [0,1] range
+                    current_gray_frames = ...
+                        mean( ...
+                        read(current_video, ...
+                        [(mm.*frames_to_merge),((mm+1).*frames_to_merge-1)]),3)./255
+                    
+                    %Take the mean brightness of the frames to be merged and assign
+                    %it to the merged frame
+                    merged_frames(:,:,mm) = ...
+                        mean(squeeze(current_gray_frames(:,:,1,:)),3);
+                    
+                    % Remove current_video from memory
+                    current_video = [];
+                    
+                    % Remove gray scale array from memory
+                    current_gray_frames = [];
+                    
+                end
                 brightnesses_in_this_merged_frame = merged_frames(:,:,mm);
                 merged_frame_brightness_medians(mm) = ...
                     median(brightnesses_in_this_merged_frame(:));
+                
             end
-            
-            % Remove current_video from memory
-            current_video = [];
-            
-            % Remove gray scale array from memory
-            current_gray_frames = [];
             
             mean_median_brightness = mean(merged_frame_brightness_medians);
             
@@ -372,6 +437,10 @@ parfor vv = 1:videos_in_batch
                 end
                 
             end
+            
+            
+            
+            % ------ Video loading completed
             
             
             %% Object detection, length and width calculation, length filtering
