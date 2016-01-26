@@ -67,7 +67,12 @@ handles.parallelFlag = true;
 
 v = ver;
 if any(strcmp('Parallel Computing Toolbox', {v.Name}))
-    handles.parallel_CPUs = matlabpool('size');
+    currentPool = gcp('nocreate');
+    if isempty(currentPool)
+        handles.parallel_CPUs = 0;
+    else
+        handles.parallel_CPUs = currentPool.NumWorkers;
+    end
     if handles.parallel_CPUs > 0
         set(handles.parallel_check,'Value',1)
         set(handles.CPU_edit,'String',num2str(handles.parallel_CPUs))
@@ -270,25 +275,46 @@ function parallel_check_Callback(hObject, eventdata, handles)
 
 if handles.parallelFlag
     
-    handles.parallel_CPUs = matlabpool('size');
-    
-    if handles.parallel_CPUs > 0
-        matlabpool close
-    else
-        if str2double(get(handles.CPU_edit,'String')) > 0
-            matlabpool(str2double(get(handles.CPU_edit,'String')))
+    v = ver;
+    if any(strcmp('Parallel Computing Toolbox', {v.Name}))
+        currentPool = gcp('nocreate');
+        if isempty(currentPool)
+            handles.parallel_CPUs = 0;
         else
-            matlabpool
+            handles.parallel_CPUs = currentPool.NumWorkers;
         end
+        if handles.parallel_CPUs > 0
+            delete(currentPool);
+        else
+            if str2double(get(handles.CPU_edit,'String')) > 0
+                currentPool = ...
+                    parpool(str2double(get(handles.CPU_edit,'String')));
+            else
+                currentPool = parpool;
+            end
+        end
+        
+        currentPool = gcp('nocreate');
+                
+        if isempty(currentPool)
+            handles.parallel_CPUs = 0;
+        else
+            handles.parallel_CPUs = currentPool.NumWorkers;
+        end
+        if handles.parallel_CPUs > 0
+            set(handles.parallel_check,'Value',1)
+        else
+            set(handles.parallel_check,'Value',0)
+        end
+        set(handles.CPU_edit,'String',num2str(handles.parallel_CPUs))
+
+    else
+        handles.parallelFlag = false;
+        set(handles.parallel_check,'Enable','off');
+        set(handles.CPU_edit,'Enable','off');
+        fprintf('Could not find Parallel Computing Toolbox installed.\n')
     end
     
-    handles.parallel_CPUs = matlabpool('size');
-    if handles.parallel_CPUs > 0
-        set(handles.parallel_check,'Value',1)
-    else
-        set(handles.parallel_check,'Value',0)
-    end
-    set(handles.CPU_edit,'String',num2str(handles.parallel_CPUs))
     
 end
 
