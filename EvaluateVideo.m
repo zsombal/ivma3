@@ -361,12 +361,7 @@ parfor vv = 1:videos_in_batch
                     %it to the merged frame
                     merged_frames(:,:,mm) = ...
                         mean(squeeze(current_gray_frames(:,:,1,:)),3);
-                    
-                    % Remove current_video from memory
-                    current_video = [];
-                    
-                    % Remove gray scale array from memory
-                    current_gray_frames = [];
+
                     
                 end
                 brightnesses_in_this_merged_frame = merged_frames(:,:,mm);
@@ -374,7 +369,13 @@ parfor vv = 1:videos_in_batch
                     median(brightnesses_in_this_merged_frame(:));
                 
             end
-            
+                                
+            % Remove current_video from memory
+            current_video = [];
+                    
+            % Remove gray scale array from memory
+            current_gray_frames = [];
+                
             mean_median_brightness = mean(merged_frame_brightness_medians);
             
             % ----
